@@ -5,7 +5,7 @@ package main
 
 import (
 	"io/ioutil"
-	"fmt"
+	"html/template"
 	"net/http"
 )
 
@@ -32,14 +32,7 @@ func editHandler(response http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		p = &Page{Title: title}
 	}
-
-	fmt.Fprintf(response, "<h1>Editing %s</h1>"+
-		"<form action=\"/save/%s\" method=\"POST\">"+
-		"<textarea name=\"body\">%s</textarea><br>"+
-		"<input type=\"submit\" value=\"Save\">"+
-		"</form>",
-		p.Title, p.Title, p.Body)
-
+	renderTemplate(response, "edit", p)
 }
 
 func viewHandler(response http.ResponseWriter, request *http.Request) {
@@ -49,13 +42,20 @@ func viewHandler(response http.ResponseWriter, request *http.Request) {
 
 	//We use the title to load an existing page
 	//we are ignoring errors for now
-	page, _ := loadPage(title)
+	page, err := loadPage(title)
 
-	//Then we put the page information into an html string then write in out to our response
-	fmt.Fprintf(response, "<h1>%s</h1><div>%s</div>", page.Title, page.Body)
+	if err != nil {
+		page = &Page{Body: []byte("Empty"), Title: "This view does not exist"}
+	}
 
+	renderTemplate(response, "view", page)
 }
 
+//a function to write a template for the server
+func renderTemplate(response http.ResponseWriter, templateString string, page *Page) {
+	t, _ := template.ParseFiles(templateString + ".html")
+	t.Execute(response, page)
+}
 //save operates on a page type and saves it to disk, using the page title as the filename
 //and saving the body of the page as the file content
 func (p *Page) save() error {
